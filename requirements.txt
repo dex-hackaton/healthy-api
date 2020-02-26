@@ -15,7 +15,6 @@ httptools==0.1.1
 httpx==0.11.1
 hyperframe==5.2.0
 idna==2.9
-marshmallow==3.5.0
 pg8000==1.13.2
 psycopg2==2.8.4
 pycparser==2.19
