@@ -60,6 +60,10 @@ async def auth(request: Request):
         token = await oauth.google.authorize_access_token(request)
         user = await oauth.google.parse_id_token(request, token)
         return JSONResponse(dict(user))
+    if request.path_params['provider'] == "github":
+        token = await oauth.github.authorize_access_token(request)
+        user = await oauth.github.parse_id_token(request, token)
+        return JSONResponse(dict(user))
 
 
 app = Starlette(
