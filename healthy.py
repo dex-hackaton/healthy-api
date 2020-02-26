@@ -29,7 +29,7 @@ oauth.register(
     authorize_url='https://github.com/login/oauth/authorize',
     authorize_params=None,
     api_base_url='https://api.github.com/',
-    client_kwargs={'scope': 'user:email'},
+    client_kwargs={'scope': 'user:email read:user'},
 )
 
 # Entities
@@ -49,10 +49,7 @@ database = databases.Database(DATABASE_URL)
 
 async def login(request: Request):
     redirect_uri = 'https://api.healthy.adds.md/auth/' + request.path_params['provider']
-    if request.path_params['provider'] == "google":
-        return await oauth.google.authorize_redirect(request, redirect_uri)
-    if request.path_params['provider'] == "github":
-        return await oauth.github.authorize_redirect(request, redirect_uri)
+    return await oauth.create_client(request.path_params['provider']).authorize_redirect(request, redirect_uri)
 
 
 async def auth(request: Request):
@@ -62,7 +59,7 @@ async def auth(request: Request):
         return JSONResponse(dict(user))
     if request.path_params['provider'] == "github":
         token = await oauth.github.authorize_access_token(request)
-        user = await oauth.github.parse_id_token(request, token)
+        user = oauth.github.get('user')
         return JSONResponse(dict(user))
 
 
