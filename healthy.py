@@ -17,11 +17,10 @@ metadata = sqlalchemy.MetaData()
 oauth = OAuth(config)
 oauth.register(
     name='google',
-    access_token_url='https://www.googleapis.com/oauth2/v4/token',
-    authorize_url=('https://accounts.google.com/o/oauth2/v2/auth'
-                   '?access_type=offline'),
-    api_base_url='https://www.googleapis.com/',
-    client_kwargs={'scope': 'https://www.googleapis.com/auth/userinfo.email'},
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={
+        'scope': 'openid email profile'
+    }
 )
 oauth.register(
     name='github',
@@ -91,4 +90,4 @@ async def list_activities(request):
 
 
 if __name__ == '__main__':
-    uvicorn.run(app, host='0.0.0.0', port=8000)
+    uvicorn.run(app, host='0.0.0.0', port=8001)
