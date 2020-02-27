@@ -101,7 +101,7 @@ async def auth(request: Request):
 
         user_found = await database.fetch_one(users.select().where(users.c.email == user["email"]))
         encoded_jwt = jwt.encode({
-            "username": user_found['id'],
+            "username": str(user_found['id']),
             "email": user["email"],
             "name": user["name"],
             "picture": user["picture"]
