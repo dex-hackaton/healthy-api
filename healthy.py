@@ -1,15 +1,18 @@
 import databases
 import sqlalchemy
 import uvicorn
+import jwt
 from starlette.applications import Starlette
 from starlette.config import Config
 from starlette.middleware import Middleware
+from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, RedirectResponse
 from starlette.routing import Route
 from starlette.requests import Request
 from authlib.integrations.starlette_client import OAuth
+from starlette_jwt import JWTAuthenticationBackend
 
 config = Config('.env')
 DATABASE_URL = config('DATABASE_URL')
@@ -42,6 +45,15 @@ activities = sqlalchemy.Table(
     sqlalchemy.Column("active", sqlalchemy.Boolean),
 )
 
+users = sqlalchemy.Table(
+    "users",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("email", sqlalchemy.String),
+    sqlalchemy.Column("name", sqlalchemy.String),
+    sqlalchemy.Column("picture", sqlalchemy.String)
+)
+
 database = databases.Database(DATABASE_URL)
 
 
@@ -56,11 +68,25 @@ async def auth(request: Request):
     if request.path_params['provider'] == "google":
         token = await oauth.google.authorize_access_token(request)
         user = await oauth.google.parse_id_token(request, token)
-        return JSONResponse(dict(user))
-    if request.path_params['provider'] == "github":
-        token = await oauth.github.authorize_access_token(request)
-        user = oauth.github.get('user')
-        return JSONResponse(dict(user))
+
+        users_found = await database.fetch_all(users.count().where(users.c.email == user["email"]))
+        users_found = users_found[0]
+
+        if users_found == 0:
+            await database.execute(
+                users.insert().values(
+                    email=user["email"],
+                    name=user["name"],
+                    picture=user["picture"]
+                )
+            )
+        encoded_jwt = jwt.encode({
+            "email": user["email"],
+            "name": user["name"],
+            "picture": user["picture"]
+        }, config("JWT_KEY"), algorithm='HS256')
+
+        return RedirectResponse("https://healthy.adds.md/?token=" + encoded_jwt)
 
 
 app = Starlette(
@@ -73,7 +99,8 @@ app = Starlette(
     on_shutdown=[database.disconnect],
     middleware=[
         Middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*'], allow_credentials=True),
-        Middleware(SessionMiddleware, secret_key=config.get('SESSION_SECRET'))
+        Middleware(SessionMiddleware, secret_key=config('SESSION_SECRET')),
+        Middleware(AuthenticationMiddleware, backend=JWTAuthenticationBackend(secret_key=config("JWT_KEY"), prefix='JWT'))
     ]
 )
 
