@@ -86,7 +86,7 @@ async def auth(request: Request):
             "picture": user["picture"]
         }, config("JWT_KEY"), algorithm='HS256')
 
-        return RedirectResponse("https://healthy.adds.md/?token=" + encoded_jwt)
+        return RedirectResponse("https://healthy.adds.md/?token=" + encoded_jwt.decode("utf-8"))
 
 
 app = Starlette(
