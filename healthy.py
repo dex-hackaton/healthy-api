@@ -88,7 +88,7 @@ async def auth(request: Request):
         user = await oauth.google.parse_id_token(request, token)
 
         users_found = await database.fetch_all(users.count().where(users.c.email == user["email"]))
-        users_found = users_found[0]
+        users_found = users_found[0][0]
 
         if users_found == 0:
             await database.execute(
