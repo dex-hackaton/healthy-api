@@ -4,6 +4,7 @@ import databases
 import sqlalchemy
 import uvicorn
 import jwt
+from sqlalchemy import and_
 from starlette.applications import Starlette
 from starlette.authentication import requires
 from starlette.config import Config
@@ -119,7 +120,8 @@ app = Starlette(
     on_startup=[database.connect],
     on_shutdown=[database.disconnect],
     middleware=[
-        Middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*'], allow_credentials=True),
+        Middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*'],
+                   allow_credentials=True),
         Middleware(SessionMiddleware, secret_key=config('SESSION_SECRET')),
         Middleware(AuthenticationMiddleware, backend=JWTAuthenticationBackend(
             secret_key=config("JWT_KEY"),
@@ -159,6 +161,58 @@ async def add_event(request):
         )
     )
     return JSONResponse({"status": "ok"})
+
+
+@app.route("/event", ["GET"])
+async def get_events(request):
+
+    date_from = datetime.now()
+    if 'date_from' in request.query_params and request.query_params['date_from'] is not None:
+        date_from = datetime.strptime(request.query_params['date_from'], '%Y-%m-%d')
+
+    date_to = None
+    if 'date_to' in request.query_params and request.query_params['date_to'] is not None:
+        date_to = datetime.strptime(request.query_params['date_to'], '%Y-%m-%d')
+
+    if date_to is not None:
+        query = and_(
+            events.c.start_time >= date_from,
+            events.c.start_time <= date_to
+        )
+    else:
+        query = events.c.start_time >= date_from
+
+    if 'paid' in request.query_params and request.query_params['paid'] is not None:
+        query = and_(
+            query,
+            events.c.paid == (request.query_params['paid'] in ['1', 1, 'true'])
+        )
+
+    if 'activity' in request.query_params and request.query_params['activity'] is not None:
+        query = and_(
+            query,
+            events.c.activity == request.query_params['activity']
+        )
+
+    results = await database.fetch_all(
+        events.select(query)
+    )
+
+    return JSONResponse(
+        [{
+            "id": str(r["id"]),
+            "title": r["title"],
+            "start_time": r["start_time"].strftime('%Y-%m-%d %H:%M'),
+            "city": r["city"],
+            "place": r["place"],
+            "paid": r["paid"],
+            "description": r["description"],
+            "organization_description": r["organization_description"],
+            "paid_description": r["paid_description"],
+            "activity": r["activity"]
+        } for r in results]
+    )
+
 
 if __name__ == '__main__':
     uvicorn.run(app, host='0.0.0.0', port=8001)
