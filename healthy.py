@@ -73,6 +73,13 @@ events = sqlalchemy.Table(
     sqlalchemy.Column("activity", sqlalchemy.String),
 )
 
+event_visitors = sqlalchemy.Table(
+    "event_visitors",
+    metadata,
+    sqlalchemy.Column("user_id", sqlalchemy.String),
+    sqlalchemy.Column("event_id", sqlalchemy.String)
+)
+
 database = databases.Database(DATABASE_URL)
 
 
@@ -163,9 +170,34 @@ async def add_event(request):
     return JSONResponse({"status": "ok"})
 
 
+@app.route("/event/participation", ["POST"])
+@requires('authenticated')
+async def participate(request):
+    await database.execute(
+        event_visitors.insert().values(
+            user_id=request.user.username,
+            event_id=request.query_params['event']
+        )
+    )
+    return JSONResponse({"status": "ok"})
+
+
+@app.route("/event/participation", ["DELETE"])
+@requires('authenticated')
+async def participate(request):
+    await database.execute(
+        event_visitors.delete().where(
+            and_(
+                event_visitors.c.user_id == request.user.username,
+                event_visitors.c.event_id == request.query_params['event']
+            )
+        )
+    )
+    return JSONResponse({"status": "ok"})
+
+
 @app.route("/event", ["GET"])
 async def get_events(request):
-
     date_from = datetime.now()
     if 'date_from' in request.query_params and request.query_params['date_from'] is not None:
         date_from = datetime.strptime(request.query_params['date_from'], '%Y-%m-%d')
