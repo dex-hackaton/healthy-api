@@ -325,6 +325,12 @@ async def get_events(request):
             events.c.section == request.query_params['section']
         )
 
+    if 'id' in request.query_params and request.query_params['id'] is not None:
+        query = and_(
+            query,
+            events.c.id == request.query_params['id']
+        )
+
     results = await database.fetch_all(
         events.select(query)
     )
