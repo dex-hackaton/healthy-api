@@ -55,7 +55,11 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("id", sqlalchemy.String, primary_key=True),
     sqlalchemy.Column("email", sqlalchemy.String),
     sqlalchemy.Column("name", sqlalchemy.String),
-    sqlalchemy.Column("picture", sqlalchemy.String)
+    sqlalchemy.Column("picture", sqlalchemy.String),
+    sqlalchemy.Column("height", sqlalchemy.Float),
+    sqlalchemy.Column("weight", sqlalchemy.Float),
+    sqlalchemy.Column("birth_date", sqlalchemy.Date),
+    sqlalchemy.Column("register_date", sqlalchemy.Date)
 )
 
 events = sqlalchemy.Table(
@@ -143,6 +147,28 @@ app = Starlette(
         ))
     ]
 )
+
+@app.route("/profile")
+@requires('authenticated')
+async def profile(request):
+    user = await database.fetch_one(users.select().where(users.c.id == request.user.username))
+    sqlalchemy.Column("id", sqlalchemy.String, primary_key=True),
+    sqlalchemy.Column("email", sqlalchemy.String),
+    sqlalchemy.Column("name", sqlalchemy.String),
+    sqlalchemy.Column("picture", sqlalchemy.String),
+    sqlalchemy.Column("height", sqlalchemy.Float),
+    sqlalchemy.Column("weight", sqlalchemy.Float),
+    sqlalchemy.Column("birth_date", sqlalchemy.Date),
+    sqlalchemy.Column("register_date", sqlalchemy.Date)
+    return JSONResponse({
+        "user_id": str(user['id']),
+        "email": user['email'],
+        "picture": user['picture'],
+        "height": user['height'],
+        "weight": user['weight'],
+        "birth_date": user['birth_date'].strftime('%Y-%m-%d') if user['birth_date'] is not None else None,
+        "register_date": user['register_date'].strftime('%Y-%m-%d %H:%M')
+    })
 
 
 @app.route("/activities")
