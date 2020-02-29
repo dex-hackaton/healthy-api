@@ -78,6 +78,7 @@ events = sqlalchemy.Table(
     sqlalchemy.Column("organization_description", sqlalchemy.String),
     sqlalchemy.Column("paid_description", sqlalchemy.String),
     sqlalchemy.Column("activity", sqlalchemy.String),
+    sqlalchemy.Column("section", sqlalchemy.Boolean)
 )
 
 event_visitors = sqlalchemy.Table(
@@ -208,7 +209,8 @@ async def add_event(request):
             description=req['description'],
             organization_description=req['organization_description'],
             paid_description=req['paid_description'],
-            activity=req['activity']
+            activity=req['activity'],
+            section=req['section']
         )
     )
     return JSONResponse({"status": "ok"})
@@ -317,6 +319,12 @@ async def get_events(request):
             events.c.activity == request.query_params['activity']
         )
 
+    if 'section' in request.query_params and request.query_params['section'] is not None:
+        query = and_(
+            query,
+            events.c.section == request.query_params['section']
+        )
+
     results = await database.fetch_all(
         events.select(query)
     )
@@ -342,6 +350,7 @@ async def get_events(request):
             "organization_description": r["organization_description"],
             "paid_description": r["paid_description"],
             "activity": r["activity"],
+            "section": r["section"],
             "like": len(list(filter(lambda like: str(like['event_id']) == str(r["id"]), likes))) > 0
         } for r in results]
     )
