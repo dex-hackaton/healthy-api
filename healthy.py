@@ -80,6 +80,13 @@ event_visitors = sqlalchemy.Table(
     sqlalchemy.Column("event_id", sqlalchemy.String)
 )
 
+event_likes = sqlalchemy.Table(
+    "event_likes",
+    metadata,
+    sqlalchemy.Column("user_id", sqlalchemy.String),
+    sqlalchemy.Column("event_id", sqlalchemy.String)
+)
+
 database = databases.Database(DATABASE_URL)
 
 
@@ -215,6 +222,32 @@ async def get_participators(request):
         "picture": p['picture'],
         "name": p['name']
     } for p in participants])
+
+
+@app.route("/event/like", ["POST"])
+@requires('authenticated')
+async def participate(request):
+    await database.execute(
+        event_likes.insert().values(
+            user_id=request.user.username,
+            event_id=request.query_params['event']
+        )
+    )
+    return JSONResponse({"status": "ok"})
+
+
+@app.route("/event/like", ["DELETE"])
+@requires('authenticated')
+async def participate(request):
+    await database.execute(
+        event_likes.delete().where(
+            and_(
+                event_visitors.c.user_id == request.user.username,
+                event_visitors.c.event_id == request.query_params['event']
+            )
+        )
+    )
+    return JSONResponse({"status": "ok"})
 
 
 @app.route("/event", ["GET"])
