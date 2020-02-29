@@ -205,7 +205,7 @@ async def get_participators(request):
             where ev.event_id = :event_id
             """
         )
-    query = query.bindparams(event_id=request.query_params['event_id'])
+    query = query.bindparams(event_id=request.query_params['event'])
     participants = await database.fetch_all(
         query
     )
