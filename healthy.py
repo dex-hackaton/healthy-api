@@ -4,7 +4,7 @@ import databases
 import sqlalchemy
 import uvicorn
 import jwt
-from sqlalchemy import and_
+from sqlalchemy import and_, text
 from starlette.applications import Starlette
 from starlette.authentication import requires
 from starlette.config import Config
@@ -194,6 +194,27 @@ async def participate(request):
         )
     )
     return JSONResponse({"status": "ok"})
+
+
+@app.route("/event/participation", ["GET"])
+async def get_participators(request):
+    query = text(
+            """
+            select u.id, u.name, u.picture from event_visitors ev
+            join users u on ev.user_id = u.id
+            where ev.event_id = :event_id
+            """
+        )
+    query = query.bindparams(event_id=request.query_params['event_id'])
+    participants = await database.fetch_all(
+        query
+    )
+
+    return JSONResponse([{
+        "user_id": str(p['id']),
+        "picture": p['picture'],
+        "name": p['name']
+    } for p in participants])
 
 
 @app.route("/event", ["GET"])
