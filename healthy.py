@@ -284,6 +284,15 @@ async def get_events(request):
         events.select(query)
     )
 
+    likes = []
+
+    if request.user.is_authenticated:
+        likes = await database.fetch_all(
+            event_likes.select().where(
+                event_likes.c.user_id == request.user.username
+            )
+        )
+
     return JSONResponse(
         [{
             "id": str(r["id"]),
@@ -295,7 +304,8 @@ async def get_events(request):
             "description": r["description"],
             "organization_description": r["organization_description"],
             "paid_description": r["paid_description"],
-            "activity": r["activity"]
+            "activity": r["activity"],
+            "like":  len(list(filter(lambda like: str(like['event_id']) == str(r["id"]), likes))) > 0
         } for r in results]
     )
 
