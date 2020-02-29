@@ -59,7 +59,10 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("height", sqlalchemy.Float),
     sqlalchemy.Column("weight", sqlalchemy.Float),
     sqlalchemy.Column("birth_date", sqlalchemy.Date),
-    sqlalchemy.Column("register_date", sqlalchemy.Date)
+    sqlalchemy.Column("register_date", sqlalchemy.Date),
+    sqlalchemy.Column("telegram", sqlalchemy.String),
+    sqlalchemy.Column("instagram", sqlalchemy.String),
+    sqlalchemy.Column("vk", sqlalchemy.String)
 )
 
 events = sqlalchemy.Table(
@@ -148,18 +151,11 @@ app = Starlette(
     ]
 )
 
-@app.route("/profile")
+
+@app.route("/profile", ["GET"])
 @requires('authenticated')
 async def profile(request):
     user = await database.fetch_one(users.select().where(users.c.id == request.user.username))
-    sqlalchemy.Column("id", sqlalchemy.String, primary_key=True),
-    sqlalchemy.Column("email", sqlalchemy.String),
-    sqlalchemy.Column("name", sqlalchemy.String),
-    sqlalchemy.Column("picture", sqlalchemy.String),
-    sqlalchemy.Column("height", sqlalchemy.Float),
-    sqlalchemy.Column("weight", sqlalchemy.Float),
-    sqlalchemy.Column("birth_date", sqlalchemy.Date),
-    sqlalchemy.Column("register_date", sqlalchemy.Date)
     return JSONResponse({
         "user_id": str(user['id']),
         "email": user['email'],
@@ -167,8 +163,23 @@ async def profile(request):
         "height": user['height'],
         "weight": user['weight'],
         "birth_date": user['birth_date'].strftime('%Y-%m-%d') if user['birth_date'] is not None else None,
-        "register_date": user['register_date'].strftime('%Y-%m-%d %H:%M')
+        "register_date": user['register_date'].strftime('%Y-%m-%d %H:%M'),
+        "telegram": user['telegram'],
+        "instagram": user['instagram'],
+        "vk": user['vk']
     })
+
+
+@app.route("/profile", ["POST"])
+@requires('authenticated')
+async def profile_edit(request):
+    req = await request.json()
+
+    query = users.update().values(**req).where(users.c.id == request.user.username)
+
+    await database.execute(query)
+
+    return JSONResponse({"status": "ok"})
 
 
 @app.route("/activities")
@@ -232,12 +243,12 @@ async def participate(request):
 @app.route("/event/participation", ["GET"])
 async def get_participators(request):
     query = text(
-            """
+        """
             select u.id, u.name, u.picture from event_visitors ev
             join users u on ev.user_id = u.id
             where ev.event_id = :event_id
             """
-        )
+    )
     query = query.bindparams(event_id=request.query_params['event'])
     participants = await database.fetch_all(
         query
@@ -331,7 +342,7 @@ async def get_events(request):
             "organization_description": r["organization_description"],
             "paid_description": r["paid_description"],
             "activity": r["activity"],
-            "like":  len(list(filter(lambda like: str(like['event_id']) == str(r["id"]), likes))) > 0
+            "like": len(list(filter(lambda like: str(like['event_id']) == str(r["id"]), likes))) > 0
         } for r in results]
     )
 
